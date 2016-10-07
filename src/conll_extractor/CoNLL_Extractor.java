@@ -22,16 +22,16 @@ public class CoNLL_Extractor {
         
         // Properties of the pipeline
         Properties props = new Properties();
-        props.put("annotators", "tokenize, ssplit, pos, lemma");
+        props.put("annotators", "tokenize, ssplit, pos, lemma, ner, parse");
         
         // StanfordCoreNLP
         StanfordCoreNLP pipeline = new StanfordCoreNLP(props);
         
         /** the chat lines in a selected file as Strings   */
-        ArrayList<String> posts = FileCleaner.cleanFile();
+        ArrayList<String> posts = FileCleaner.getPosts();
         
         /** the n-grams in the post   */
-        ArrayList<String> engrams = FileCleaner.cleanFile();
+        ArrayList<String> engrams = new ArrayList<>();
         
         /**
          * the "n" of the n-gram
@@ -67,11 +67,9 @@ public class CoNLL_Extractor {
                     // this is the lemma label of the token
                     String lemma = token.lemma();
                     
-                    System.out.println(num + " " + 
-                            word + " " +
-                            pos + " " + 
-                            lemma);
+                    System.out.println(num + " " + word + " " + pos + " " + lemma);
                 }
+                System.out.println();
             }
         }
     }

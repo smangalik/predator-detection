@@ -10,7 +10,7 @@ import java.util.Scanner;
 
 public class FileCleaner {
 
-	public static ArrayList<String> cleanFile() throws FileNotFoundException{
+	public static ArrayList<String> getPosts() throws FileNotFoundException{
 
 		File dirtyFile = null;
 		ArrayList<String> dirtyPosts = new ArrayList<String>();
