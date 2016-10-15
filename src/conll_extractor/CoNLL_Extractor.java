@@ -7,7 +7,12 @@ import edu.stanford.nlp.ling.CoreAnnotations.TextAnnotation;
 import edu.stanford.nlp.ling.CoreAnnotations.TokensAnnotation;
 import edu.stanford.nlp.ling.CoreLabel;
 import edu.stanford.nlp.pipeline.Annotation;
+import edu.stanford.nlp.pipeline.CoNLLOutputter;
 import edu.stanford.nlp.pipeline.StanfordCoreNLP;
+import edu.stanford.nlp.pipeline.XMLOutputter;
+import edu.stanford.nlp.trees.Tree;
+import edu.stanford.nlp.trees.TreeCoreAnnotations;
+import edu.stanford.nlp.trees.TreeCoreAnnotations.TreeAnnotation;
 import edu.stanford.nlp.util.CoreMap;
 import edu.stanford.nlp.util.StringUtils;
 
@@ -57,6 +62,9 @@ public class CoNLL_Extractor {
                 // traversing the words in the current sentence
                 // a CoreLabel is a CoreMap with additional token-specific methods
                 int num = 0;
+                
+                System.out.println("Mine");
+                
                 for (CoreLabel token : sentence.get(TokensAnnotation.class)) {
                     //this is the number of the token
                     num++;
@@ -64,12 +72,24 @@ public class CoNLL_Extractor {
                     String word = token.get(TextAnnotation.class);
                     // this is the POS tag of the token
                     String pos = token.get(PartOfSpeechAnnotation.class);
+                    pos = pos.substring(0, 2);
+                    // this is the PPOS tag of the token
+                    String ppos = token.get(PartOfSpeechAnnotation.class);
                     // this is the lemma label of the token
                     String lemma = token.lemma();
                     
-                    System.out.println(num + " " + word + " " + pos + " " + lemma);
+                    System.out.println(num + "\t" + 
+                            word + "\t" + pos + "\t" + 
+                            ppos + "\t" + lemma);
                 }
-                System.out.println();
+                // this is an outputter for annotations
+                System.out.println("Theirs");
+                System.out.println(new CoNLLOutputter().print(document));
+                //System.out.print(new XMLOutputter().print(document));
+                
+                // this is the parse tree of the current sentence
+                Tree tree = sentence.get(TreeCoreAnnotations.TreeAnnotation.class);                
+                System.out.println(tree.toString() + "\n"); // newline
             }
         }
     }
