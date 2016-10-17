@@ -10,6 +10,7 @@ import edu.stanford.nlp.util.CoreMap;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
 import java.util.Scanner;
@@ -27,7 +28,9 @@ import org.w3c.dom.Element;
 import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
+import org.xml.sax.ErrorHandler;
 import org.xml.sax.SAXException;
+import org.xml.sax.SAXParseException;
 
 /**
  * @author sid
@@ -35,27 +38,29 @@ import org.xml.sax.SAXException;
 
 public class ChatlogCleaner {
     
-    public static void main (String args[]) throws FileNotFoundException, IOException, SAXException{
+    /** Beginning Directory */
+    private static final File dirtyDir = new File("/home/sid/Documents/CSE487/GeneralData");
+    
+    /** Ending Directory */
+    private static final File cleanDir = new File("/home/sid/Documents/CSE487/ParsedData");
+    
+    /** StanfordCoreNLP Pipeline */
+    private static StanfordCoreNLP pipeline;
+    
+    public static void main (String args[]) throws
+            FileNotFoundException, IOException, SAXException, ParserConfigurationException{
+        
+        Properties props = new Properties();
+        props.put("annotators", "tokenize, ssplit, pos, lemma, parse");
+        pipeline = new StanfordCoreNLP(props);
         
         // All files to clean
         File[] dirtyFiles = null;
         
-        // Beginning Directory
-        File dirtyDir = new File("/home/sid/Documents/CSE487/GeneralData");
-        
-        /** Ending Directory */
-        File cleanDir = new File("/home/sid/Documents/CSE487/ParsedData");
-        
-        // Properties of the pipeline
-        Properties props = new Properties();
-        props.put("annotators", "tokenize, ssplit, pos, lemma, parse");
-        
-        // StanfordCoreNLP Pipeline
-        StanfordCoreNLP pipeline = new StanfordCoreNLP(props);
-        
         //Select your dirty files
         JFileChooser fileChooser = new JFileChooser();
         fileChooser.setCurrentDirectory(dirtyDir);
+        fileChooser.setMultiSelectionEnabled(true);
         int returnValue = fileChooser.showOpenDialog(null);
         if (returnValue == JFileChooser.APPROVE_OPTION) {
             dirtyFiles = fileChooser.getSelectedFiles();
@@ -67,24 +72,62 @@ public class ChatlogCleaner {
             DocumentBuilderFactory docFactory = DocumentBuilderFactory.newInstance();
             DocumentBuilder docBuilder = docFactory.newDocumentBuilder();
             Document doc = docBuilder.parse(dirtyFile);
+            docBuilder.setErrorHandler(new ErrorHandler() {
+                @Override
+                public void error(SAXParseException exception) throws SAXException {}
+                @Override
+                public void fatalError(SAXParseException exception) throws SAXException {}
+                @Override
+                public void warning(SAXParseException exception) throws SAXException {}
+            });
             
-            String conll; // The ConLL String
-            String tree;  // The Parse Tree String
-            
-            // Getting the CoNLL and Parse Trees
-            Annotation document = new Annotation(post);
-            pipeline.annotate(document);
-            List<CoreMap> sentences = document.get(CoreAnnotations.SentencesAnnotation.class);
-            for(CoreMap sentence: sentences) { // gives all sentences
+            // Get all of the <BODY> posts
+            NodeList bodies = doc.getElementsByTagName("BODY");
+            for (int i = 0; i < bodies.getLength(); i++){
+                Node body = bodies.item(i);
                 
-                // CoNLL Form as a String
-                conll = new CoNLLOutputter().print(document);
+                // String in the <BODY>
+                String bodyString = body.getTextContent();
                 
-                // CoNLL Form as a String
-                tree = sentence.get(TreeCoreAnnotations.TreeAnnotation.class).toString();
+                //Clean up text lingo
+                if(bodyString.matches(".*(emoti).*") || bodyString.matches(".*disconnected"))
+                    continue;
+                bodyString = bodyString.replace(" r ", " are ");
+                bodyString = bodyString.replace(" u ", " you ");
+                
+                // Getting the CoNLL and Parse Trees
+                Annotation document = new Annotation(bodyString);
+                pipeline.annotate(document);
+                List<CoreMap> sentences = document.get(CoreAnnotations.SentencesAnnotation.class);
+                for(CoreMap sentence: sentences) { 
+                    
+                    // CoNLL Form as a String
+                    String conll = new CoNLLOutputter().print(document);
+                    // Tree as a String
+                    String tree = sentence.get(TreeCoreAnnotations.TreeAnnotation.class).toString();
+                    
+                    System.out.println(conll);
+                    System.out.println(tree);
+                    System.out.println("--------------------------------------------------");
+                    
+                    // append <SENTENCE> to <BODY>
+                    Element sentenceNode = doc.createElement("SENTENCE");
+                    sentenceNode.appendChild(doc.createTextNode(bodyString));
+                    body.appendChild(sentenceNode);
+                    
+                    // append <CoNLL> to <SENTENCE>
+                    Element conllNode = doc.createElement("CoNLL");
+                    conllNode.appendChild(doc.createTextNode(conll));
+                    sentenceNode.appendChild(conllNode);
+                    
+                    // append <TREE> to <SENTENCE>
+                    Element treeNode = doc.createElement("TREE");
+                    treeNode.appendChild(doc.createTextNode(tree));
+                    sentenceNode.appendChild(treeNode);
+                    
+                }
                 
             }
-            
         }
         
     }
