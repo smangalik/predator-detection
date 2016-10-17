@@ -10,10 +10,8 @@ import edu.stanford.nlp.util.CoreMap;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
-import java.util.Scanner;
 import javax.swing.JFileChooser;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -25,7 +23,6 @@ import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
-import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.ErrorHandler;
@@ -48,7 +45,7 @@ public class ChatlogCleaner {
     private static StanfordCoreNLP pipeline;
     
     public static void main (String args[]) throws
-            FileNotFoundException, IOException, SAXException, ParserConfigurationException{
+            FileNotFoundException, IOException, SAXException, ParserConfigurationException, TransformerException{
         
         Properties props = new Properties();
         props.put("annotators", "tokenize, ssplit, pos, lemma, parse");
@@ -99,16 +96,16 @@ public class ChatlogCleaner {
                 Annotation document = new Annotation(bodyString);
                 pipeline.annotate(document);
                 List<CoreMap> sentences = document.get(CoreAnnotations.SentencesAnnotation.class);
-                for(CoreMap sentence: sentences) { 
+                for(CoreMap sentence: sentences) {
                     
                     // CoNLL Form as a String
                     String conll = new CoNLLOutputter().print(document);
                     // Tree as a String
                     String tree = sentence.get(TreeCoreAnnotations.TreeAnnotation.class).toString();
                     
-                    System.out.println(conll);
-                    System.out.println(tree);
-                    System.out.println("--------------------------------------------------");
+                    //System.out.println(conll);
+                    //System.out.println(tree);
+                    //System.out.println("--------------------------------------------------");
                     
                     // append <SENTENCE> to <BODY>
                     Element sentenceNode = doc.createElement("SENTENCE");
@@ -121,15 +118,27 @@ public class ChatlogCleaner {
                     sentenceNode.appendChild(conllNode);
                     
                     // append <TREE> to <SENTENCE>
-                    Element treeNode = doc.createElement("TREE");
+                    Element treeNode = doc.createElement("PARSETREE");
                     treeNode.appendChild(doc.createTextNode(tree));
                     sentenceNode.appendChild(treeNode);
                     
                 }
                 
             }
+            
+            // Final home for the XML
+            File cleanFile = new File(cleanDir + "/" + dirtyFile.getName());
+            
+            // write the content into xml file
+            TransformerFactory transformerFactory = TransformerFactory.newInstance();
+            Transformer transformer = transformerFactory.newTransformer();
+            DOMSource source = new DOMSource(doc);
+            StreamResult result = new StreamResult(cleanFile);
+            transformer.transform(source, result);
+            
+            System.out.println("Done with " + dirtyFile.getName());
+         
         }
         
     }
-    
 }
