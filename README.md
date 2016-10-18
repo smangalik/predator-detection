@@ -1,11 +1,10 @@
 # predator-detection
 
 Goal: 
-Online Predator Detection using CoreNLP
+Online Predator Detection using CoreNLP -
+Derive Lexical Chains
 
 Sub-Goals:  
-Check if we can return the parse tree from the chunks method
-Multiple file read operation,
-Write back to XML \<ParseTree\> field,
-Write back to XML \<CoNLL\> field,
-Maintain original XML and write in a new directory
+Reading "Lexical Cohesion by Thesaural Relations as an indicator of the structure of text, Jane Morris, Greame Hirst",
+Use wordnet similarity (ws4j demo) [lch - res],  
+"Are Lexical chains actually good for modeling Fixated Discourse?"
