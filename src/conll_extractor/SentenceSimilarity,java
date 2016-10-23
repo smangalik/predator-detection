@@ -1,0 +1,120 @@
+package wordnet;
+
+import edu.cmu.lti.lexical_db.ILexicalDatabase;
+import edu.cmu.lti.lexical_db.NictWordNet;
+import edu.cmu.lti.ws4j.RelatednessCalculator;
+import edu.cmu.lti.ws4j.impl.HirstStOnge;
+import edu.cmu.lti.ws4j.impl.JiangConrath;
+import edu.cmu.lti.ws4j.impl.LeacockChodorow;
+import edu.cmu.lti.ws4j.impl.Lesk;
+import edu.cmu.lti.ws4j.impl.Lin;
+import edu.cmu.lti.ws4j.impl.Path;
+import edu.cmu.lti.ws4j.impl.Resnik;
+import edu.cmu.lti.ws4j.impl.WuPalmer;
+import edu.cmu.lti.ws4j.util.WS4JConfiguration;
+
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import javax.swing.JFileChooser;
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.transform.TransformerException;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
+import org.xml.sax.ErrorHandler;
+import org.xml.sax.SAXException;
+import org.xml.sax.SAXParseException;
+
+public class SentenceSimilarity {
+    
+    /** Beginning Directory */
+    private static final File dirtyDir = new File("/home/sid/Documents/CSE487/GeneralData");
+    
+    /** Lexical Database */
+    private static ILexicalDatabase db = new NictWordNet();
+    
+    /** Relatedness Calculator */
+    private static RelatednessCalculator[] rcs = {
+        new HirstStOnge(db), new LeacockChodorow(db), new Lesk(db),  new WuPalmer(db),
+        new Resnik(db), new JiangConrath(db), new Lin(db), new Path(db)
+    };
+    
+    public static void main (String args[]) throws
+            FileNotFoundException, IOException, SAXException, ParserConfigurationException, TransformerException{
+        
+        // All files to clean
+        File[] dirtyFiles = null;
+        
+        //Select your dirty files
+        JFileChooser fileChooser = new JFileChooser();
+        fileChooser.setCurrentDirectory(dirtyDir);
+        fileChooser.setMultiSelectionEnabled(true);
+        int returnValue = fileChooser.showOpenDialog(null);
+        if (returnValue == JFileChooser.APPROVE_OPTION) {
+            dirtyFiles = fileChooser.getSelectedFiles();
+        }
+        
+        // for each dirty file make a clean with CoNLL Form and Parse Tree
+        for(File dirtyFile : dirtyFiles){
+            
+            DocumentBuilderFactory docFactory = DocumentBuilderFactory.newInstance();
+            DocumentBuilder docBuilder = docFactory.newDocumentBuilder();
+            Document doc = docBuilder.parse(dirtyFile);
+            docBuilder.setErrorHandler(new ErrorHandler() {
+                @Override
+                public void error(SAXParseException exception) throws SAXException {}
+                @Override
+                public void fatalError(SAXParseException exception) throws SAXException {}
+                @Override
+                public void warning(SAXParseException exception) throws SAXException {}
+            });
+            
+            // Get all of the <BODY> posts
+            NodeList bodies = doc.getElementsByTagName("BODY");
+            for (int i = 0; i < bodies.getLength(); i++){
+                Node body = bodies.item(i);
+                
+                // String in the <BODY>
+                String bodyString = body.getTextContent();
+                
+                //Clean up text lingo
+                if(bodyString.matches(".*(emoti).*") || bodyString.matches(".*disconnected"))
+                    continue;
+                String firstChar = bodyString.substring(0,1).toUpperCase();
+                bodyString = firstChar + bodyString.substring(1);
+                bodyString = bodyString.replace(" i ", " I ");
+                bodyString = bodyString.replace(" im ", " I'm ");
+                bodyString = bodyString.replace(" r ", " are ");
+                bodyString = bodyString.replace(" u ", " you ");
+                bodyString = bodyString.replace(" tho ", " though ");
+                bodyString = bodyString.replace(" pix ", " pictures ");
+                bodyString = bodyString.replace(" pics ", " pictures ");
+                bodyString = bodyString.replace(">:d<", ":d");
+                
+                //System.out.println(bodyString);
+                
+            }
+            
+            long t0 = System.currentTimeMillis();
+            semanticSimilarity("corgi", "dog");
+            long t1 = System.currentTimeMillis();
+            System.out.println( "Done in "+(t1-t0)+" msec." );
+            
+            System.out.println("Done with " + dirtyFile.getName());
+            
+        }
+        
+    }
+    
+    private static void semanticSimilarity(String word1, String word2) {
+        WS4JConfiguration.getInstance().setMFS(true);
+        for (RelatednessCalculator rc : rcs) {
+            double s = rc.calcRelatednessOfWords(word1, word2);
+            System.out.println( rc.getClass().getName()+"\t"+s );
+        }
+    }
+}
