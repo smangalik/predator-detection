@@ -1,7 +1,10 @@
 package wordnet;
 
+import edu.cmu.lti.jawjaw.pobj.POS;
 import edu.cmu.lti.lexical_db.ILexicalDatabase;
 import edu.cmu.lti.lexical_db.NictWordNet;
+import edu.cmu.lti.lexical_db.data.Concept;
+import edu.cmu.lti.ws4j.Relatedness;
 import edu.cmu.lti.ws4j.RelatednessCalculator;
 import edu.cmu.lti.ws4j.impl.HirstStOnge;
 import edu.cmu.lti.ws4j.impl.JiangConrath;
@@ -16,6 +19,8 @@ import edu.cmu.lti.ws4j.util.WS4JConfiguration;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import javax.swing.JFileChooser;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -39,15 +44,26 @@ public class SentenceSimilarity {
     
     /** Relatedness Calculator */
     private static RelatednessCalculator[] rcs = {
-        new HirstStOnge(db), new LeacockChodorow(db), new Lesk(db),  new WuPalmer(db),
-        new Resnik(db), new JiangConrath(db), new Lin(db), new Path(db)
+        //new HirstStOnge(db),
+        //new LeacockChodorow(db),
+        //new Lesk(db),
+        new WuPalmer(db),
+        //new Resnik(db),
+        new JiangConrath(db),
+        new Lin(db),
+        new Path(db)
     };
     
+    private static String comparedWord = "control";
+    
     public static void main (String args[]) throws
-            FileNotFoundException, IOException, SAXException, ParserConfigurationException, TransformerException{
+            FileNotFoundException, IOException, SAXException,
+            ParserConfigurationException, TransformerException{
         
         // All files to clean
         File[] dirtyFiles = null;
+        
+        ArrayList<String> wordList = new ArrayList<>();
         
         //Select your dirty files
         JFileChooser fileChooser = new JFileChooser();
@@ -82,39 +98,130 @@ public class SentenceSimilarity {
                 String bodyString = body.getTextContent();
                 
                 //Clean up text lingo
-                if(bodyString.matches(".*(emoti).*") || bodyString.matches(".*disconnected"))
+                if(bodyString.matches(".*(emoti).*") ||
+                        bodyString.matches(".*disconnected"))
                     continue;
                 String firstChar = bodyString.substring(0,1).toUpperCase();
                 bodyString = firstChar + bodyString.substring(1);
-                bodyString = bodyString.replace(" i ", " I ");
-                bodyString = bodyString.replace(" im ", " I'm ");
-                bodyString = bodyString.replace(" r ", " are ");
-                bodyString = bodyString.replace(" u ", " you ");
-                bodyString = bodyString.replace(" tho ", " though ");
-                bodyString = bodyString.replace(" pix ", " pictures ");
-                bodyString = bodyString.replace(" pics ", " pictures ");
-                bodyString = bodyString.replace(">:d<", ":d");
+                bodyString = cleanString(bodyString);
                 
                 //System.out.println(bodyString);
+                for (String word : bodyString.split(" ")){
+                    wordList.add(word);
+                }
+                
                 
             }
             
-            long t0 = System.currentTimeMillis();
-            semanticSimilarity("corgi", "dog");
-            long t1 = System.currentTimeMillis();
-            System.out.println( "Done in "+(t1-t0)+" msec." );
+            /*
+            // Get all of the <COMMENT> posts
+            NodeList comments = doc.getElementsByTagName("COMMENT");
+            for (int i = 0; i < comments.getLength(); i++){
+            Node comment = comments.item(i);
+            // String in the <COMMENT>
+            String commentString = comment.getTextContent();
+            if(commentString.equals(""))
+            continue;
+            //System.out.println(commentString.substring(1, commentString.length() -1));
+            }
+            */
+            
+            
+            for(String word : wordList){
+                // compare with other nouns, verbs, adjectives
+                // consider triggers for when the similarity is strong enough
+                RelatednessCalculator rc = new WuPalmer(db);
+                String rcString = rc.getClass().getName().substring(22);
+                System.out.print(word);
+                //System.out.print(rcString + "\t");
+                //System.out.print(conceptSimilarity(rc, word, comparedWord) + "\n");
+            }
+            
+            /*
+            System.out.println("Without synsets");
+            System.out.println(semanticSimilarity("jazz", "blues"));
+            System.out.println();
+            System.out.println("With synsets");
+            for(RelatednessCalculator rc : rcs){
+                String rcString = rc.getClass().getName().substring(22);
+                System.out.print(rcString + "\t");
+                System.out.print(conceptSimilarity(rc, "jazz", "rock") + "\n");
+            }
             
             System.out.println("Done with " + dirtyFile.getName());
-            
+            */
         }
         
     }
     
-    private static void semanticSimilarity(String word1, String word2) {
+    /**
+     * Returns a String that represents the similarity between two words
+     * @param word1
+     * @param word2
+     */
+    private static String semanticSimilarity(String word1, String word2) {
+        String result = "";
         WS4JConfiguration.getInstance().setMFS(true);
-        for (RelatednessCalculator rc : rcs) {
+        for (int i = 0; i < rcs.length; i++) {
+            RelatednessCalculator rc = rcs[i];
             double s = rc.calcRelatednessOfWords(word1, word2);
-            System.out.println( rc.getClass().getName()+"\t"+s );
+            if (i == rcs.length-1)
+                result += rc.getClass().getName().substring(22)+"\t"+s;
+            else
+                result += rc.getClass().getName().substring(22)+"\t"+s + "\n";
         }
+        return result;
+    }
+    
+    /**
+     * Uses RelatedCalculator of your choice to compare synsets of two words
+     * @param word1
+     * @param word2
+     * @return formatted string with the concept similarity inside of it
+     */
+    private static String conceptSimilarity(RelatednessCalculator rc,
+            String word1, String word2){
+        ILexicalDatabase db = new NictWordNet();
+        WS4JConfiguration.getInstance().setMFS(true);
+        List<POS[]> posPairs = rc.getPOSPairs();
+        double maxScore = -1D;
+        
+        for(POS[] posPair: posPairs) {
+            List<Concept> synsets1 = (List<Concept>)db.getAllConcepts(word1, posPair[0].toString());
+            List<Concept> synsets2 = (List<Concept>)db.getAllConcepts(word2, posPair[1].toString());
+            
+            for(Concept synset1: synsets1) {
+                for (Concept synset2: synsets2) {
+                    Relatedness relatedness = rc.calcRelatednessOfSynset(synset1, synset2);
+                    double score = relatedness.getScore();
+                    if (score > maxScore) {
+                        maxScore = score;
+                    }
+                }
+            }
+        }
+        
+        if (maxScore == -1D) {
+            maxScore = 0.0;
+        }
+        
+        return "sim(\"" + word1 + "\", \"" + word2 + "\") =  " + maxScore;
+        //return "" + maxScore;
+    }
+    
+    public static String cleanString(String input){
+        input = input.replace(" i ", " I ");
+        input = input.replace(" im ", " I am ");
+        input = input.replace("Im", " I am ");
+        input = input.replace(" r ", " are ");
+        input = input.replace(" u ", " you ");
+        input = input.replace(" ru ", " are you ");
+        input = input.replace("ru ", "are you ");
+        input = input.replace(" ru", " are you");
+        input = input.replace(" tho ", " though ");
+        input = input.replace(" pix ", " pictures ");
+        input = input.replace(" pics ", " pictures ");
+        input = input.replace(">:d<", ":d");
+        return input;
     }
 }
