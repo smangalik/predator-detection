@@ -2,9 +2,9 @@
 
 Goal: 
 Online Predator Detection using CoreNLP -
-Noting out the wordnet similarities to "control"
+Visualizing similarities to the word "control"
 
-Sub-Goals:  
-Identify the “senses” for "control" using wordnet,
-measure the similarity of every word with that sense of control (noun or verb),
-find trends in the data clustering
+Sub-Goals:
+Manually set the senses for the word "control",
+create csv files from this metric and display them with d3,
+find trends in the data
