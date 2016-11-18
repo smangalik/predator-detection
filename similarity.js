@@ -1,18 +1,12 @@
 /// reads in a CSV made from the data above
 /// Makes a scatterplot with labels
 
-$(document).ready(function () 
-    {
-        $.get("/similarity_control/", function(data) 
-        {
-            $("#fileNames").append(data);
-        });
-    })
-
 var labels = ['Similarity to Control'];
 	
 var columns = [0,1,2,3]; //must be in order
+//var colNames = ['number', 'person', 'word', 'label']; // indexed correctly
 var colNames = ['number', 'control', 'word', 'label']; // indexed correctly
+
 var selectedX = colNames[0];
 var selectedY = colNames[1];
 
@@ -24,16 +18,42 @@ var x = d3.scale.linear().range([0, width]);
 var y = d3.scale.linear().range([height, 0]);
 var color = d3.scale.linear().range(["yellow","red"]);
 
-update();
 
-function update(){
+
+switchTo("ArmySgt1961");
+//switchTo("arthinice");
+//switchTo("asian_kreationz");
+//switchTo("aticloose");
+
+function switchTo(choice) {
 	
-//var fileName = "similarity_control/ArmySgt1961.csv"
-//var fileName = "similarity_control/arthinice.csv"
-//var fileName = "similarity_control/asian_kreationz.csv"
-var fileName = "similarity_control/aticloose.csv"
+	//$("#svgid").empty();
 	
-console.log("drawing " + selectedX + " vs " + selectedY);
+	//var fileName = "Similarity_Person/" + choice
+	var fileName = "Similarity_Control/" + choice
+
+	var victimFile = fileName + "Victim.csv";
+	var predatorFile = fileName + "Predator.csv";
+
+	console.log(victimFile);
+	console.log(predatorFile);
+
+	document.write("<div>Victim</div>");
+	update(victimFile);
+	document.write("<br><br><br>");
+	document.write("<div>----------------------------------------------------------------</div>");
+	document.write("<br><br><br>");
+	document.write("<div>Predator</div>");
+	update(predatorFile);
+
+}
+
+
+function update(file){
+	
+selectedFile = file
+	
+//console.log("drawing " + selectedX + " vs " + selectedY);
 
 var xAxis = d3.svg.axis()
     .scale(x)
@@ -49,7 +69,7 @@ var svg = d3.select("body").append("svg")
   .append("g")
     .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
-var data = d3.csv(fileName, function(error, data) {
+var data = d3.csv(selectedFile, function(error, data) {
 	if (error) throw error;
 
   data.forEach(function(d) {
@@ -110,7 +130,7 @@ var data = d3.csv(fileName, function(error, data) {
     var xSeries = data.map(function(d) { return parseFloat(d[selectedX]); });
 	var ySeries = data.map(function(d) { return parseFloat(d[selectedY]); });
     
-    if(xSeries.length < 1000){
+    if(xSeries.length < 500){
 	// Add the connecting lines
 	svg.append("path")
 		.attr("class", "line")
